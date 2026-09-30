@@ -1,0 +1,200 @@
+# X2 Arm Control
+
+## 1. Overview
+
+This controller is used to test arm joint movement on the AGIBOT X2.
+
+It uses:
+
+* ROS 2
+* Python
+* AIMDK messages
+* Ruckig
+
+The controller can send position and velocity commands for the 14 arm joints.
+
+---
+
+## 2. How It Works
+
+The basic process is:
+
+```text
+Set Joint Target
+       ↓
+Check Joint Limit
+       ↓
+Ruckig Creates Trajectory
+       ↓
+Control Loop Runs
+       ↓
+Create Joint Command
+       ↓
+Publish Command
+       ↓
+X2 Arm
+```
+
+---
+
+## 3. Joint Target
+
+A target is selected by joint name.
+
+Example:
+
+```python
+node.set_target_positions({
+    "left_shoulder_roll_joint": 0.533038
+})
+```
+
+The controller starts with all 14 joints at `0.0` and changes only the joint specified in the target.
+
+The target position is checked against the joint's limits before the trajectory starts.
+
+---
+
+## 4. Ruckig
+
+Ruckig is used to generate a smooth trajectory.
+
+Current settings:
+
+```text
+Control period:       0.002 seconds
+Maximum velocity:     0.3
+Maximum acceleration: 0.3
+Maximum jerk:         0.5
+```
+
+The controller updates Ruckig every `0.002` seconds, which is **500 Hz**.
+
+---
+
+## 5. Control Loop
+
+The control loop runs only while a trajectory is active.
+
+During each cycle:
+
+1. Ruckig calculates the next position.
+2. Ruckig calculates the next velocity.
+3. A `JointCommandArray` is created.
+4. Commands for all 14 joints are added.
+5. The command is published.
+6. The generated position, velocity, and acceleration become the next Ruckig state.
+
+When Ruckig reports `Finished`, the controller stops the trajectory.
+
+---
+
+## 6. Why the Position Is Not Continuously Held
+
+This is an important point in the current implementation.
+
+The controller does **not** continuously read the robot's actual joint position and use it to control the joint.
+
+The initial Ruckig position is set to:
+
+```python
+self.input.current_position = [0.0] * dofs
+```
+
+The robot's state callback currently only checks whether state messages arrive. It does not use the received state to update Ruckig.
+After the trajectory finishes:
+
+```python
+self.trajectory_running = False
+```
+
+Therefore, the controller stops publishing new trajectory commands.
+
+### Current behavior
+
+```text
+Target
+  ↓
+Move to target
+  ↓
+Trajectory finished
+  ↓
+Stop trajectory
+  ↓
+No continuous position update
+```
+
+This is different from a controller that continuously reads the real joint position and continuously commands the desired position.
+
+---
+
+## 7. Command Sent to the Robot
+
+For every joint, the controller sends:
+
+```text
+name
+position
+velocity
+effort
+stiffness
+damping
+```
+
+The current code uses:
+
+```python
+j.effort = 0.0
+```
+
+and uses the configured `kp` and `kd` values for stiffness and damping.
+
+---
+
+## 8. Current Limitation
+
+The main limitation of the current controller is that the robot's actual joint state is **not yet used as Ruckig's current state**.
+
+Currently:
+
+```text
+Robot Joint State
+       ↓
+   Received
+       ↓
+Not used for Ruckig initialization
+```
+
+Instead, Ruckig starts with:
+
+```text
+Position     = 0
+Velocity     = 0
+Acceleration = 0
+```
+
+This should be considered when testing the controller on the real robot.
+
+---
+
+## 9. Future Improvement
+
+A future version can use the robot's actual joint state:
+
+```text
+Read Robot State
+       ↓
+Get Current Position
+       ↓
+Get Current Velocity
+       ↓
+Initialize/Update Ruckig
+       ↓
+Generate Target Trajectory
+       ↓
+Publish Command
+       ↓
+Continue Feedback Control
+```
+
+This would make the controller more closely connected to the real robot's current state.

@@ -215,11 +215,3 @@ Before running the controller, use this order:
 9. Check robot movement
 ```
 
-This gives us a simple way to determine whether a problem is coming from:
-
-* ROS 2 communication
-* Topic connection
-* Message type
-* QoS
-* Controller
-* Robot response

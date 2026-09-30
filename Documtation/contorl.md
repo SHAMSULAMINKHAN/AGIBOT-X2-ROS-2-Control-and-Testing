@@ -197,4 +197,3 @@ Publish Command
 Continue Feedback Control
 ```
 
-This would make the controller more closely connected to the real robot's current state.

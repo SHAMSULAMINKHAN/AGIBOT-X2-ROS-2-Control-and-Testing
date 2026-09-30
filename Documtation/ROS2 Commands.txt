@@ -1,0 +1,225 @@
+# ROS 2 Commands for AGIBOT X2
+
+## 1. Check ROS 2 Nodes
+
+List running nodes:
+
+```bash
+ros2 node list
+```
+
+Get information about a specific node:
+
+```bash
+ros2 node info <node_name>
+```
+
+---
+
+## 2. Check ROS 2 Topics
+
+List all topics:
+
+```bash
+ros2 topic list
+```
+
+Check the arm state topic:
+
+```bash
+ros2 topic info /aima/hal/joint/arm/state
+```
+
+Check the arm command topic:
+
+```bash
+ros2 topic info /aima/hal/joint/arm/command
+```
+
+---
+
+## 3. Check Topic Type
+
+Check the message type:
+
+```bash
+ros2 topic type /aima/hal/joint/arm/state
+```
+
+Expected:
+
+```text
+aimdk_msgs/msg/JointStateArray
+```
+
+For the command topic:
+
+```bash
+ros2 topic type /aima/hal/joint/arm/command
+```
+
+Expected:
+
+```text
+aimdk_msgs/msg/JointCommandArray
+```
+
+---
+
+## 4. Read the Arm State
+
+To see one arm-state message:
+
+```bash
+ros2 topic echo /aima/hal/joint/arm/state --once
+```
+
+To continuously monitor the state:
+
+```bash
+ros2 topic echo /aima/hal/joint/arm/state
+```
+
+The state message contains information such as:
+
+```text
+name
+position
+velocity
+effort
+```
+
+---
+
+## 5. Monitor the Arm Command
+
+To see commands being published:
+
+```bash
+ros2 topic echo /aima/hal/joint/arm/command
+```
+
+This is useful when testing the controller.
+
+You can check whether the expected joint names and positions are actually being published.
+
+---
+
+## 6. Check Publishers and Subscribers
+
+Use:
+
+```bash
+ros2 topic info /aima/hal/joint/arm/state -v
+```
+
+and:
+
+```bash
+ros2 topic info /aima/hal/joint/arm/command -v
+```
+
+The `-v` option provides additional information about publishers, subscribers, and QoS.
+
+This is useful when a command is being published but the robot does not respond.
+
+---
+
+## 7. Check the Topic Rate
+
+Check how frequently messages are being published:
+
+```bash
+ros2 topic hz /aima/hal/joint/arm/state
+```
+
+For the command topic:
+
+```bash
+ros2 topic hz /aima/hal/joint/arm/command
+```
+
+The controller is configured with a `0.002` second control period, corresponding to **500 Hz**.
+
+---
+
+## 8. Check the Message Structure
+
+To see the definition of the message:
+
+```bash
+ros2 interface show aimdk_msgs/msg/JointCommandArray
+```
+
+For a joint command:
+
+```bash
+ros2 interface show aimdk_msgs/msg/JointCommand
+```
+
+For the joint state:
+
+```bash
+ros2 interface show aimdk_msgs/msg/JointStateArray
+```
+
+---
+
+## 9. Check a Specific Joint
+
+When reading the arm state:
+
+```bash
+ros2 topic echo /aima/hal/joint/arm/state
+```
+
+Look for the required joint name, for example:
+
+```text
+left_elbow_joint
+```
+
+Then check its:
+
+```text
+position
+velocity
+effort
+```
+
+This is useful for verifying whether the physical joint actually changed after sending a command.
+
+---
+
+## 10. Basic Testing Order
+
+Before running the controller, use this order:
+
+```text
+1. Check nodes
+       ↓
+2. Check topics
+       ↓
+3. Check topic types
+       ↓
+4. Check publishers/subscribers
+       ↓
+5. Read joint state
+       ↓
+6. Start controller
+       ↓
+7. Monitor command topic
+       ↓
+8. Monitor joint state
+       ↓
+9. Check robot movement
+```
+
+This gives us a simple way to determine whether a problem is coming from:
+
+* ROS 2 communication
+* Topic connection
+* Message type
+* QoS
+* Controller
+* Robot response
